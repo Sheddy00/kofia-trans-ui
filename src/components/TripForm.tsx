@@ -62,8 +62,11 @@ export function TripForm({
   const upsert = useUpsertTrip()
   const notify = useToast()
 
-  const set = (key: keyof FormState) => (event: { target: { value: string } }) =>
+  const set = (key: keyof FormState) => (event: { target: { value: string } }) => {
     setForm((current) => ({ ...current, [key]: event.target.value }))
+    // Clear the field's error as soon as the user edits it; it is re-checked on submit.
+    setErrors((current) => (current[key] ? { ...current, [key]: undefined } : current))
+  }
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
