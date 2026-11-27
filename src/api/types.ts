@@ -65,3 +65,18 @@ export interface TripFilters {
   from?: string
   to?: string
 }
+
+export type Role = 'ADMIN' | 'VIEWER'
+
+export interface User {
+  username: string
+  role: Role
+}
+
+export interface LoginResponse {
+  accessToken: string
+  tokenType: string
+  expiresIn: number
+  expiresAt: string
+  user: User
+}

@@ -1,7 +1,8 @@
-import { Pencil, Plus, RotateCcw, Search, XCircle } from 'lucide-react'
+import { Eye, Pencil, Plus, RotateCcw, Search, XCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useTrips, useUpdateTripStatus } from '../api/hooks'
+import { useCanEdit } from '../auth/useAuth'
 import type { Trip, TripStatus } from '../api/types'
 import { Modal } from '../components/Modal'
 import { useToast } from '../components/Toast'
@@ -36,6 +37,7 @@ export function TripsPage() {
   )
   const updateStatus = useUpdateTripStatus()
   const notify = useToast()
+  const canEdit = useCanEdit()
 
   const all = useMemo(() => allTrips.data ?? [], [allTrips.data])
   const drivers = useMemo(() => deriveDrivers(all), [all])
@@ -81,13 +83,25 @@ export function TripsPage() {
     <>
       <PageHeader
         title="Courses"
-        description="Consultez, créez et mettez à jour les courses de la coopérative."
+        description={
+          canEdit
+            ? 'Consultez, créez et mettez à jour les courses de la coopérative.'
+            : 'Consultez les courses de la coopérative.'
+        }
         actions={
-          <Button onClick={() => setEditing('new')} disabled={!allTrips.data}>
-            <Plus className="size-4" aria-hidden /> Nouvelle course
-          </Button>
+          canEdit && (
+            <Button onClick={() => setEditing('new')} disabled={!allTrips.data}>
+              <Plus className="size-4" aria-hidden /> Nouvelle course
+            </Button>
+          )
         }
       />
+      {!canEdit && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+          <Eye className="size-4 shrink-0" aria-hidden />
+          Compte en lecture seule : la création et la modification des courses sont réservées aux administrateurs.
+        </div>
+      )}
       <SlowServerNotice loading={filtered.isPending && !periodIncomplete} />
 
       <Card className="mb-6 p-4">
@@ -179,7 +193,7 @@ export function TripsPage() {
             </div>
             <TripList
               trips={visible}
-              actions={(trip) => (
+              actions={canEdit ? (trip) => (
                 <>
                   <Button variant="ghost" size="sm" onClick={() => setEditing(trip)} aria-label={`Modifier ${trip.id}`}>
                     <Pencil className="size-4" aria-hidden />
@@ -196,7 +210,7 @@ export function TripsPage() {
                     <span className="md:sr-only">{trip.status === 'COMPLETED' ? 'Annuler' : 'Rétablir'}</span>
                   </Button>
                 </>
-              )}
+              ) : undefined}
             />
           </>
         )}

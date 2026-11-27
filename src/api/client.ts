@@ -1,15 +1,17 @@
+import { getSession, SESSION_EXPIRED_EVENT, setSession } from '../auth/session'
 import type {
   DriverStatistics,
+  LoginResponse,
   Revenue,
   TopEarningDriver,
   Trip,
   TripFilters,
   TripStatus,
   TripUpsertRequest,
+  User,
 } from './types'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8081').replace(/\/$/, '')
-const API_KEY = import.meta.env.VITE_API_KEY ?? ''
 
 export class ApiError extends Error {
   readonly status: number
@@ -22,7 +24,9 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = { 'x-api-key': API_KEY }
+  const headers: Record<string, string> = {}
+  const session = getSession()
+  if (session) headers.Authorization = `Bearer ${session.token}`
   if (init.body) headers['Content-Type'] = 'application/json'
 
   let response: Response
@@ -38,6 +42,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     data = text ? JSON.parse(text) : null
   } catch {
     data = null
+  }
+
+  if (response.status === 401 && session) {
+    // The token expired or was revoked: drop the session so the app returns to the login page.
+    setSession(null)
+    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
   }
 
   if (!response.ok) {
@@ -62,6 +72,11 @@ function queryString(params: Record<string, string | undefined>): string {
 const segment = encodeURIComponent
 
 export const api = {
+  login: (username: string, password: string) =>
+    request<LoginResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+
+  me: () => request<User>('/auth/me'),
+
   trips: (filters: TripFilters = {}) => request<Trip[]>(`/trips${queryString({ ...filters })}`),
 
   upsertTrip: (tripId: string, body: TripUpsertRequest) =>
